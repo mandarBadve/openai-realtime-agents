@@ -1,68 +1,17 @@
-import { RealtimeAgent, tool } from '@openai/agents/realtime';
-import { sampleDocs } from './sampleDocs';
+import { RealtimeAgent } from '@openai/agents/realtime';
 
-function rankDocuments(query: string) {
-  const searchTerms = query
-    .toLowerCase()
-    .split(/\s+/)
-    .filter(Boolean);
+const vectorStoreId = process.env.NEXT_PUBLIC_FILE_SEARCH_VECTOR_STORE_ID;
 
-  if (searchTerms.length === 0) {
-    return [];
-  }
-
-  return sampleDocs
-    .map((doc) => {
-      const haystack = `${doc.title} ${doc.summary} ${doc.content}`.toLowerCase();
-      const score = searchTerms.reduce((acc, term) => acc + (haystack.includes(term) ? 1 : 0), 0);
-      return score > 0
-        ? {
-            doc,
-            score,
-          }
-        : null;
-    })
-    .filter((entry): entry is { doc: (typeof sampleDocs)[number]; score: number } => Boolean(entry))
-    .sort((a, b) => b.score - a.score);
+if (!vectorStoreId) {
+  throw new Error(
+    'NEXT_PUBLIC_FILE_SEARCH_VECTOR_STORE_ID is not defined. Set it to the OpenAI vector store id you want the file_search tool to use.',
+  );
 }
 
-const fileSearchTool = tool({
-  name: 'file_search',
-  description:
-    'Search the local project knowledge base (README, agent configs, and UI overview) to retrieve supporting text for user questions.',
-  parameters: {
-    type: 'object',
-    properties: {
-      query: {
-        type: 'string',
-        description: 'What the user wants to know, typically their last utterance.',
-      },
-      topK: {
-        type: 'integer',
-        minimum: 1,
-        maximum: 5,
-        description: 'Maximum number of snippets to return, defaults to 3.',
-      },
-    },
-    required: ['query'],
-    additionalProperties: false,
-  },
-  async execute(input: { query: string; topK?: number }) {
-    const topK = Math.min(Math.max(input.topK ?? 3, 1), 5);
-    const ranked = rankDocuments(input.query).slice(0, topK);
-
-    return {
-      query: input.query,
-      results: ranked.map(({ doc, score }) => ({
-        title: doc.title,
-        path: doc.path,
-        summary: doc.summary,
-        snippet: doc.content,
-        relevance: score,
-      })),
-    };
-  },
-});
+const fileSearchTool = {
+  type: 'file_search' as const,
+  vector_store_ids: [vectorStoreId],
+} as const;
 
 export const fileSearchVoiceAgent = new RealtimeAgent({
   name: 'voiceFileSearch',
@@ -85,7 +34,7 @@ You are a friendly technical voice assistant that can verbally answer questions 
 - After providing an answer, invite the user to continue with "Anything else you'd like me to look up?"
 - If the user requests something unrelated to the repo, explain that you only have access to the shared documentation.
 `,
-  tools: [fileSearchTool],
+  tools: [fileSearchTool as any],
   handoffs: [],
 });
 
