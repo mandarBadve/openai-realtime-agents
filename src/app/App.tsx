@@ -31,6 +31,14 @@ import {
   fileSearchVoiceScenario,
   fileSearchVoiceCompanyName,
 } from "@/app/agentConfigs/fileSearchVoice";
+import {
+  vectorVoiceScenario,
+  vectorVoiceCompanyName,
+} from "@/app/agentConfigs/vectorVoiceSearch";
+import {
+  tutorScenario,
+  tutorCompanyName,
+} from "@/app/agentConfigs/tutorVoice";
 
 // Map used by connect logic for scenarios defined via the SDK.
 const sdkScenarioMap: Record<string, RealtimeAgent[]> = {
@@ -38,6 +46,8 @@ const sdkScenarioMap: Record<string, RealtimeAgent[]> = {
   customerServiceRetail: customerServiceRetailScenario,
   chatSupervisor: chatSupervisorScenario,
   fileSearchVoice: fileSearchVoiceScenario,
+  vectorVoice: vectorVoiceScenario,
+  tutor: tutorScenario,
 };
 
 const scenarioCompanyNames: Record<string, string> = {
@@ -45,6 +55,8 @@ const scenarioCompanyNames: Record<string, string> = {
   customerServiceRetail: customerServiceRetailCompanyName,
   chatSupervisor: chatSupervisorCompanyName,
   fileSearchVoice: fileSearchVoiceCompanyName,
+  vectorVoice: vectorVoiceCompanyName,
+  tutor: tutorCompanyName,
 };
 
 import useAudioDownload from "./hooks/useAudioDownload";
@@ -206,8 +218,16 @@ function App() {
     return data.client_secret.value;
   };
 
+  const resolveAgentSetKey = () => {
+    const key = searchParams.get("agentConfig");
+    if (key && allAgentSets[key]) {
+      return key;
+    }
+    return defaultAgentSetKey;
+  };
+
   const connectToRealtime = async () => {
-    const agentSetKey = searchParams.get("agentConfig") || "default";
+    const agentSetKey = resolveAgentSetKey();
     if (sdkScenarioMap[agentSetKey]) {
       if (sessionStatus !== "DISCONNECTED") return;
       setSessionStatus("CONNECTING");
@@ -281,6 +301,7 @@ function App() {
           create_response: true,
         };
 
+    const agentSetKey = resolveAgentSetKey();
     sendEvent({
       type: 'session.update',
       session: {
@@ -441,7 +462,7 @@ function App() {
     };
   }, [sessionStatus]);
 
-  const agentSetKey = searchParams.get("agentConfig") || "default";
+  const agentSetKey = resolveAgentSetKey();
 
   return (
     <div className="text-base flex flex-col h-screen bg-gray-100 text-gray-800 relative">
@@ -460,7 +481,7 @@ function App() {
             />
           </div>
           <div>
-            Realtime API <span className="text-gray-500">Agents</span>
+            MG AI <span className="text-gray-500">Agents</span>
           </div>
         </div>
         <div className="flex items-center">
